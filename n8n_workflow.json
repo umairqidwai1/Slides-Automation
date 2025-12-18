@@ -1,0 +1,853 @@
+{
+  "name": "Siraaj Slides Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Convert Lesson Emails → Slides JSON\n\nYou will receive a lesson email (subject + body). Return a single JSON object with exactly one top-level key: \"slides\".\n\"slides\" must be an array of slide objects.\n\nOutput only valid JSON (no prose).\n\nTop-level format:\n{ \"slides\": [ { \"title\": \"...\", \"body\": [\"• ...\"] } ] }\n\n\nMust include Cover Slide (must be slides[0])\nExact structure:\n{\n\"title\": \"Class Name\",\n\"body\": [\n\"Teacher Name\",\n\"Week #: Date\"\n]\n}\nIf date not found, use todays date:\n{{ $now.format(\"M/d\") }}\nBut make sure to convert it to the right format listed below for the cover slide.\n\nCover extraction rules:\n\nExtract class name, teacher, and week/lesson + date.\n\nIf missing, infer teacher from this mapping (use exact class and teacher names):\n\n\"Fiqh of Transactions\" → Sheikh Hassan Noor\n\n\"Fiqh of Inheritance\" → Sheik Hassan Noor\n\n\"Attributes of His Majesty\" → Ustadh Mohammed Noor\n\nIf class name is missing, you can pick one of the above class names based on the content, DON'T change or make up your own class name, use the exact strings listed above. \n\nHere is some context on what each class is about to help you infer:\n\"- Attibutes of His Majesty: Names of Allah and what they mean\n- Fiqh of Transactions: Islamic rulings pertaining to general transactions\n- Fiqh of Inheritance: Islamic rulings pertaining to Inheritance\"\n\nIf you can't figure it out, enter unknown.\n\nIf only some parts are found, include what you have and leave others out.\n\nWeek # and Lesson # are interchangable.\n\nEXACT date line format: “Week 3: September 25”.\n\n\n\nContent Slides:\n\nEach content slide object must contain:\n\"title\": string\n\"body\": array of strings (bullets starting with • or - )\n\nUse section headings as titles.\n\nTurn definitions, lists, and points into concise bullets.\n\nPrimary bullets start with •\n\nSub-bullets start with -\n\nKeep 5–8 bullets per slide max.\n\nEach bullet ≤15 words.\n\nPreserve the order of the email.\n\nBreak long sections into multiple slides with “(continued)” in the title.\n\nExtraction Rules:\n\nIgnore email noise such as headers, footers, or signatures.\n\nPreserve Arabic text exactly as is.\n\nDo not invent, summarize, or modify meaning—only use what’s in the email.\n\nValidation:\n\nThe only top-level key is \"slides\".\n\nEvery item in \"slides\" is an object with \"title\" and \"body\".\n\nNo extra text or commentary before or after the JSON.\n\nThe output must be pure JSON and ready for a path like:\nreturn $input.first().json.choices[0].message.content.slides",
+              "role": "system"
+            },
+            {
+              "content": "=Email Subject: \n{{ $('Get message').item.json.headers.subject }}\n\nEmail Content: \n{{ $('Get message').item.json.text }}\n\n"
+            }
+          ]
+        },
+        "simplify": false,
+        "jsonOutput": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        16,
+        0
+      ],
+      "id": "5348537c-c2cf-4f01-b61b-2a2fa081545c",
+      "name": "OpenAI Slides",
+      "credentials": {
+        "openAiApi": {
+          "id": "gJptFR7DlSWvdleA",
+          "name": "OpenAi account - Umair Qidwai"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {
+          "labelIds": [
+            "Label_6261215658324281760"
+          ],
+          "readStatus": "unread"
+        }
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -464,
+        0
+      ],
+      "id": "1edc4c51-79c3-4445-8d57-8be6faff2fe7",
+      "name": "Slides Email",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "A9gTeZ3ldXOJy7Ce",
+          "name": "uqidw92298@gmail.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "messageId": "={{ $json.id }}",
+        "simple": false,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -304,
+        0
+      ],
+      "id": "d8d43965-2719-464b-9e90-a7de31ab4413",
+      "name": "Get message",
+      "webhookId": "bf646315-78aa-444f-8856-40d65b4fc8cb",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "A9gTeZ3ldXOJy7Ce",
+          "name": "uqidw92298@gmail.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "path": "/home/umair/siraaj",
+        "options": {
+          "fileName": "content.json"
+        }
+      },
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        -272,
+        208
+      ],
+      "id": "1170a409-3464-4b4a-a874-6c90b316b974",
+      "name": "Upload a file",
+      "credentials": {
+        "sshPassword": {
+          "id": "5bT0FmVRnRYOSP2x",
+          "name": "SSH Password account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.first().json.choices[0].message.content.slides\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        288,
+        0
+      ],
+      "id": "a3c110da-5573-4ed7-b1b4-ef63cce4e0fe",
+      "name": "Extract Slides JSON"
+    },
+    {
+      "parameters": {
+        "command": "=set -euo pipefail\ncd /home/umair/siraaj\n# run your script (adjust filename if needed)\n./venv/bin/python make_slides.py 1>&2\n# confirm file exists (fails if not)\ntest -s Generated_Presentation.pptx\n# output the PPTX to stdout as base64 for n8n to capture\nbase64 -w0 Generated_Presentation.pptx\necho\n",
+        "cwd": "/home/umair/siraaj"
+      },
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        208
+      ],
+      "id": "0b9182bf-9816-4d14-81cc-f07bbea23366",
+      "name": "Run Python Scrip to create presentation",
+      "credentials": {
+        "sshPassword": {
+          "id": "5bT0FmVRnRYOSP2x",
+          "name": "SSH Password account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "toBinary",
+        "sourceProperty": "stdout",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        96,
+        208
+      ],
+      "id": "14f44e35-396e-40aa-ab16-5c74df6b4ac5",
+      "name": "Convert to pptx file"
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        -448,
+        208
+      ],
+      "id": "1d4d5060-46b8-42a2-9666-a237a7fe594e",
+      "name": "Convert to file"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.canva.com/rest/v1/imports",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Import-Metadata",
+              "value": "={{\n  (() => {\n    const title = $('Extract Slides JSON').all()[0].json.title + \" \" + $now.format(\"M/d\");\n    const safe = title.replace(/[\\\\:*?\"<>|]+/g, '').slice(0, 80);\n    \n    // Manual base64 encoding function\n    function toBase64(str) {\n      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';\n      let output = '';\n      let i = 0;\n      \n      while (i < str.length) {\n        const a = str.charCodeAt(i++);\n        const b = str.charCodeAt(i++);\n        const c = str.charCodeAt(i++);\n        \n        const bits = (a << 16) | (b << 8) | c;\n        \n        output += chars.charAt((bits >> 18) & 63) +\n                 chars.charAt((bits >> 12) & 63) +\n                 chars.charAt((bits >> 6) & 63) +\n                 chars.charAt(bits & 63);\n      }\n      \n      // Add padding if needed\n      const padding = str.length % 3;\n      if (padding === 1) {\n        output = output.slice(0, -2) + '==';\n      } else if (padding === 2) {\n        output = output.slice(0, -1) + '=';\n      }\n      \n      return output;\n    }\n    \n    return JSON.stringify({\n      title_base64: toBase64(safe),\n      mime_type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation'\n    });\n  })()\n}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/octet-stream"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        272,
+        208
+      ],
+      "id": "930da710-f869-4657-b76c-819c85534c80",
+      "name": "Upload to Canva",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "zV7bNc98KSdkWRTu",
+          "name": "Canva Project - uqidw92298@gmail.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 3
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -272,
+        464
+      ],
+      "id": "9bcda93f-6bb6-41e2-b00f-5bf08ee19a0e",
+      "name": "Wait",
+      "webhookId": "afc418d1-b7e5-4d56-b68e-8cf053204e81"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "47dd4357-700a-41ca-a6df-6e1886e7d955",
+              "leftValue": "={{ $json.job.status }}",
+              "rightValue": "success",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        48,
+        464
+      ],
+      "id": "b1f898c7-f877-4d2b-86d1-2ef2a4eef80a",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "41a65592-9246-4066-8c19-aad8dba9002c",
+              "name": "Job ID",
+              "value": "={{ $json.job.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -448,
+        464
+      ],
+      "id": "27d5db55-0d25-4f32-bbb2-ad22c6e0bf50",
+      "name": "Get job id"
+    },
+    {
+      "parameters": {
+        "operation": "reply",
+        "messageId": "={{ $('Slides Email').first().json.id }}",
+        "emailType": "text",
+        "message": "=Assalamualaikum,\n\nHere's the link for the {{$('Extract Slides JSON').all()[0].json.title}} class:\n\nhttps://www.canva.com/design/{{ $('HTTP Request (Check if completed)').item.json.job.result.designs[0].id }}/edit\n\nRegards,\nUmair Qidwai",
+        "options": {
+          "appendAttribution": false,
+          "replyToSenderOnly": true
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        864,
+        432
+      ],
+      "id": "46916b7f-0f0b-45f4-8959-2535111d3947",
+      "name": "Reply to a message",
+      "webhookId": "b300a735-8a27-4aed-b2a2-50c525e91018",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "A9gTeZ3ldXOJy7Ce",
+          "name": "uqidw92298@gmail.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "markAsRead",
+        "messageId": "={{ $('Slides Email').item.json.id }}"
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -144,
+        0
+      ],
+      "id": "e737bdb6-6ee9-4965-8fba-ad1e1dc918e7",
+      "name": "Mark a message as read",
+      "webhookId": "7c60c113-a483-4467-b577-881e6370bf7a",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "A9gTeZ3ldXOJy7Ce",
+          "name": "uqidw92298@gmail.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://api.canva.com/rest/v1/imports/' + $json['Job ID'] }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -112,
+        464
+      ],
+      "id": "d0fcf547-93e0-49ce-9231-a87687d70e42",
+      "name": "HTTP Request (Check if completed)",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "zV7bNc98KSdkWRTu",
+          "name": "Canva Project - uqidw92298@gmail.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.job.result.designs[0].title }}",
+                    "rightValue": "Inheritance",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    },
+                    "id": "175b3f63-6c43-4a12-815b-5f787d5446ed"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "57d764ee-eb8d-4873-ab42-5313d8bc1c8f",
+                    "leftValue": "={{ $json.job.result.designs[0].title }}",
+                    "rightValue": "Transactions",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "e276f688-1203-4b8e-b322-d100266b0655",
+                    "leftValue": "={{ $json.job.result.designs[0].title }}",
+                    "rightValue": "Attributes",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "f72fe2df-9c16-47fe-bdb7-5cfdd0db442e",
+                    "leftValue": "={{ $json.job.result.designs[0].title }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notExists",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {
+          "fallbackOutput": 3
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        272,
+        416
+      ],
+      "id": "d5b4f03a-7a27-4bb3-99ba-4dddf439d847",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.canva.com/rest/v1/folders/move",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"item_id\": \"{{ $json.job.result.designs[0].id }}\",\n  \"to_folder_id\": \"FAF2od5r7lc\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        560,
+        304
+      ],
+      "id": "8a169adc-6033-47f0-abce-1d5ac28b6e3d",
+      "name": "Move to Inheritance",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "zV7bNc98KSdkWRTu",
+          "name": "Canva Project - uqidw92298@gmail.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.canva.com/rest/v1/folders/move",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"item_id\": \"{{ $json.job.result.designs[0].id }}\",\n  \"to_folder_id\": \"FAF2oc4fG5U\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        560,
+        432
+      ],
+      "id": "812c8277-f626-4b8b-9a9e-5dde10b57b92",
+      "name": "Move to Transactions",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "zV7bNc98KSdkWRTu",
+          "name": "Canva Project - uqidw92298@gmail.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.canva.com/rest/v1/folders/move",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"item_id\": \"{{ $json.job.result.designs[0].id }}\",\n  \"to_folder_id\": \"FAF2oduGbfA\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        560,
+        560
+      ],
+      "id": "20a7ee3b-2ba8-4e0c-b11a-9e19a866ae0b",
+      "name": "Move to Attributes",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "zV7bNc98KSdkWRTu",
+          "name": "Canva Project - uqidw92298@gmail.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.canva.com/rest/v1/folders/move",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"item_id\": \"{{ $json.job.result.designs[0].id }}\",\n  \"to_folder_id\": \"FAF2oceYTjo\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        560,
+        688
+      ],
+      "id": "04f31065-a852-484c-81b7-1ead2bbe1f48",
+      "name": "Move to General (Fallback)",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "zV7bNc98KSdkWRTu",
+          "name": "Canva Project - uqidw92298@gmail.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://api.canva.com/rest/v1/folders/FAF2oceYTjo/items?item_types=folder",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1360,
+        160
+      ],
+      "id": "803627ad-ec03-44f2-9766-7d10c75f9fd8",
+      "name": "Find Folder ID's",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "zV7bNc98KSdkWRTu",
+          "name": "Canva Project - uqidw92298@gmail.com"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "OpenAI Slides": {
+      "main": [
+        [
+          {
+            "node": "Extract Slides JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slides Email": {
+      "main": [
+        [
+          {
+            "node": "Get message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get message": {
+      "main": [
+        [
+          {
+            "node": "Mark a message as read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload a file": {
+      "main": [
+        [
+          {
+            "node": "Run Python Scrip to create presentation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Slides JSON": {
+      "main": [
+        [
+          {
+            "node": "Convert to file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Python Scrip to create presentation": {
+      "main": [
+        [
+          {
+            "node": "Convert to pptx file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to pptx file": {
+      "main": [
+        [
+          {
+            "node": "Upload to Canva",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to file": {
+      "main": [
+        [
+          {
+            "node": "Upload a file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload to Canva": {
+      "main": [
+        [
+          {
+            "node": "Get job id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request (Check if completed)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get job id": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reply to a message": {
+      "main": [
+        []
+      ]
+    },
+    "Mark a message as read": {
+      "main": [
+        [
+          {
+            "node": "OpenAI Slides",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request (Check if completed)": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Move to Inheritance": {
+      "main": [
+        [
+          {
+            "node": "Reply to a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Move to Inheritance",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Move to Transactions",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Move to Attributes",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Move to General (Fallback)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Move to Transactions": {
+      "main": [
+        [
+          {
+            "node": "Reply to a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Move to Attributes": {
+      "main": [
+        [
+          {
+            "node": "Reply to a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Move to General (Fallback)": {
+      "main": [
+        [
+          {
+            "node": "Reply to a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "9865ea46-5773-4809-9fe1-6930eead76be",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "00720655b8aa582254abffbd93bede4f2b9dd3ddcd82f016d37099a3b9abd6e7"
+  },
+  "id": "RpolpVtRiJ0LZ9jR",
+  "tags": []
+}
